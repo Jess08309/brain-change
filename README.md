@@ -256,7 +256,7 @@ What follows is a real sequence, described in the third person, with the researc
 
 An adult over 40 with ADHD — specifically the pattern of hyperfocus fusing with an emotion to produce urges that are hard not to act on — who had wanted focus, energy, and emotional control their whole life. On testosterone replacement therapy (TRT), sleeping 7+ hours. Four herniated discs (L2–L4, S1 region), a shoulder torn bench pressing and re-injured in a skateboard crash just before physical therapy was due to start.
 
-They worked through the preparation in Section 9 — music to set the state, a steady question, emotion present and named — before each of two psilocybin sessions.
+They worked through the preparation in Section 9 — music to set the state, a steady question, emotion present and named — before each of two psilocybin sessions. Everything below happened over a six-week period. There were three sessions in total; two of them were one week apart. A third session was not run in a prepared setting and is left out of the account below — though see the note on timing at the end of this section.
 
 ### The first experience
 
@@ -308,6 +308,12 @@ The afterglow is strongest for 2–4 weeks and tapers over 2–3 months. Right n
 - Write, do not broadcast. The sense of knowing goes in the notebook. What still reads as true in six months was true.
 - Treat "open to the universe" as a direction, not a deadline. The impatience says now; the brain changes on the 66-day schedule regardless.
 
+### A note on timing
+
+Three sessions in six weeks, two of them a week apart, is denser than any clinical protocol. Trials space doses three to eight weeks apart, and the reason is integration as much as safety: the weeks after each session are where the change gets converted into habit, and a week is not enough time for that before the next opening. Two sessions a week apart effectively become one long afterglow — which fits how intense the energy and the mission felt. Psilocybin also downregulates 5-HT2A receptors quickly, so a dose one week after another is weaker at the same amount, which pushes toward higher doses — the wrong direction. Three sessions plus TRT plus ADHD energy in six weeks is a lot of input; good sleep says the brain is handling it, and it is still the right moment to stop and let the 66-day clock run uninterrupted.
+
+On the excluded session: leaving it out is reasonable — it was not run under the preparation, so it does not test the preparation. But it still counts toward load and tolerance, and it is actually useful data. A session without the preparation, in the same person, in the same six weeks, is the closest thing to a control this account has. If it was less clear, less positive, or more scattered, that is evidence the preparation does something. It is worth writing down separately.
+
 The person who finishes their laundry, sleeps eight hours, protects the shoulder, and treats everyone like they are loved and learning has already demonstrated everything the second experience wanted to prove. The experience did not install the change. It showed the person what their brain does when the gate works — and that is more useful, because now there is a target.
 
 ---
@@ -334,6 +340,7 @@ The person who finishes their laundry, sleeps eight hours, protects the shoulder
 | Energy, impatience, "my time"? | Check sleep. 7+ rested: afterglow, channel it. Short and not tired: see a psychiatrist that week. |
 | On TRT? | Accounts for much of the drive, confidence, focus. Tell the prescriber about mood shifts. Fuse is shorter — delay rule matters more. |
 | Body feels better after? | Consistency, TRT, reduced guarding. Tissue has not caught up with the feeling. PT, imaging, slow loading, no skateboard. |
+| Session spacing? | Trials use 3–8 weeks. A week apart merges into one afterglow and builds tolerance. Three in six weeks: stop and integrate. |
 | Making it last? | Cue-anchored habits, track behavior not feeling, no more sessions, daily cardio, 66 days. Expect the week 6–10 dip. |
 
 The one line: **the brain can change plenty at 40+ — but the order is gate, then daily window, then depth. The drug is a possible amplifier for one piece, not the engine.**
