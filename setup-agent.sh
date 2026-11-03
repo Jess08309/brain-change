@@ -17,3 +17,9 @@ sudo -u agent tee /home/agent/work/skills/README.md >/dev/null << 'EOF'
 # Skills
 Empty until a human copies a procedure here after it actually worked.
 EOF
+
+sudo apt-get install -y acl
+sudo setfacl -R -m u:agent:rX /home/botuser/AI-Trading-Bot-Suite
+sudo setfacl -R -d -m u:agent:rX /home/botuser/AI-Trading-Bot-Suite
+sudo find /home/botuser/AI-Trading-Bot-Suite \( -name '.env' -o -name '.env.*' -o -name '*.pem' -o -name '*.key' -o -name 'id_rsa' \) -exec setfacl -m u:agent:--- {} \;
+sudo usermod -aG systemd-journal agent
