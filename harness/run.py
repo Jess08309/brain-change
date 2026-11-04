@@ -20,7 +20,7 @@ from pathlib import Path
 
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from router import Unavailable, choose, local_check, source_file, verdict
+from router import Unavailable, choose, citation, local_check, source_file, verdict
 
 HOME = Path("/home/agent")
 WORK = HOME / "work"
@@ -149,6 +149,17 @@ TOOLS = [
             "required": ["title", "lesson"],
         },
     },
+
+    {
+        "type": "function",
+        "name": "fetch_url",
+        "description": "Fetch one public https page. The result starts with Citation: and the final URL. Private hosts and secrets are refused.",
+        "parameters": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        },
+    },
     {
         "type": "function",
         "name": "finish",
@@ -160,6 +171,101 @@ TOOLS = [
         },
     },
 ]
+
+
+
+def fetch_url(url: str) -> str:
+    import ipaddress
+    import json
+    import socket
+    from urllib.parse import quote, urlparse
+
+    raw_url = (url or "").strip()
+    parsed = urlparse(raw_url)
+    if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
+        return "refused: https only"
+    host = parsed.hostname.lower().rstrip(".")
+    if host == "localhost" or host.endswith(".local") or host.endswith(".internal"):
+        return "refused: host not allowed"
+
+    def blocked(hostname: str) -> bool:
+        try:
+            infos = socket.getaddrinfo(hostname, 443)
+        except OSError:
+            return True
+        for info in infos:
+            ip = ipaddress.ip_address(info[4][0])
+            if any(
+                (
+                    ip.is_private,
+                    ip.is_loopback,
+                    ip.is_link_local,
+                    ip.is_reserved,
+                    ip.is_multicast,
+                    ip.is_unspecified,
+                )
+            ):
+                return True
+        return False
+
+    if blocked(host):
+        return "refused: address not allowed"
+
+    def read_https(target: str) -> tuple[str, bytes, str]:
+        target_host = urlparse(target).hostname
+        if not target_host or blocked(target_host):
+            raise OSError("blocked")
+        req = urllib.request.Request(
+            target,
+            headers={"User-Agent": "fred-study/1.0 (https://github.com/Jess08309/brain-change; research)"},
+        )
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            final = resp.geturl()
+            final_host = urlparse(final).hostname
+            if not final_host or blocked(final_host):
+                raise OSError("redirect")
+            return final, resp.read(200000), resp.headers.get("Content-Type", "")
+
+    text = ""
+    if host.endswith("wikipedia.org") and "/wiki/" in parsed.path:
+        title = parsed.path.split("/wiki/", 1)[1]
+        api = (
+            "https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1"
+            "&exlimit=1&redirects=1&format=json&titles=" + quote(title)
+        )
+        try:
+            _final, body, _ctype = read_https(api)
+            payload = json.loads(body.decode("utf-8", errors="replace"))
+            pages = payload.get("query", {}).get("pages", {})
+            page = next(iter(pages.values()), {})
+            text = str(page.get("extract") or "")
+        except Exception:
+            text = ""
+    if not text:
+        try:
+            _final, body, ctype = read_https(raw_url)
+        except Exception as exc:
+            return f"fetch error: {type(exc).__name__}"
+        text = body.decode("utf-8", errors="replace")
+        if "html" in ctype.lower() or text.lstrip()[:1] == "<" or text.lstrip().lower().startswith("<!doctype"):
+            chunk = ""
+            for pattern in (
+                r'(?is)<article\b[^>]*>(.*?)</article>',
+                r'(?is)<main\b[^>]*>(.*?)</main>',
+                r'(?is)<div[^>]+id="mw-content-text"[^>]*>(.*)',
+            ):
+                found = re.search(pattern, text)
+                if found:
+                    chunk = found.group(1)
+                    break
+            text = chunk or text
+            text = re.sub(r"(?is)<script.*?>.*?</script>", " ", text)
+            text = re.sub(r"(?is)<style.*?>.*?</style>", " ", text)
+            text = re.sub(r"(?is)<[^>]+>", " ", text)
+            text = re.sub(r"[ \t\r\f\v]+", " ", text)
+            text = re.sub(r"\n{3,}", "\n\n", text)
+    text = redact(text).strip()[:6000]
+    return f"Citation: {raw_url}\n\n{text or '(empty)'}"
 
 
 def now() -> str:
@@ -321,8 +427,8 @@ class Task:
         text = lesson.strip()
         if len(text) < 80:
             return "refused: lesson too short"
-        if "File:" not in text:
-            return "refused: name the source with File:"
+        if "File:" not in text and "Citation:" not in text and "https://" not in text:
+            return "refused: name the source with File: or Citation:"
         if "Condition:" not in text:
             return "refused: include Condition:"
         MEMORY.mkdir(parents=True, exist_ok=True)
@@ -365,6 +471,8 @@ def run_tool(name: str, args: dict, task: Task) -> str:
             return task.write_note(str(args.get("name", "")), str(args.get("content", "")))
         if name == "propose_patch":
             return task.propose_patch(str(args.get("title", "")), str(args.get("diff", "")))
+        if name == "fetch_url":
+            return fetch_url(str(args.get("url", "")))
         if name == "remember":
             return task.remember(str(args.get("title", "")), str(args.get("lesson", "")))
         if name == "finish":
@@ -529,6 +637,40 @@ def check() -> None:
 
 
 
+
+def review_page(key: str, answer: str, url: str, model: str) -> tuple[str, float]:
+    page = fetch_url(url)
+    if page.startswith("refused") or page.startswith("fetch error"):
+        return "refused: source page did not load", 0.0
+    body = {
+        "model": model,
+        "input": [
+            {
+                "role": "system",
+                "content": (
+                    "You are the check, not the author. Reply with one line: PASS or FAIL. "
+                    "FAIL if the answer states a fact that is not in the source page, misses the citation URL, "
+                    "or has no Condition: line. Do not explain."
+                ),
+            },
+            {
+                "role": "user",
+                "content": "SOURCE " + url + "\n" + page[:6000] + "\n\nANSWER\n" + answer[:4000],
+            },
+        ],
+        "max_output_tokens": 32,
+    }
+    resp = post(key, body)
+    text, _calls = extract(resp)
+    _incoming, _outgoing, cost = usage_cost(resp)
+    mark = verdict(text)
+    if mark == "pass":
+        return "", cost
+    if mark == "fail":
+        return "refused: checker failed the answer against the page", cost
+    return "refused: checker did not return PASS or FAIL", cost
+
+
 def review(key: str, answer: str, source: str, model: str) -> tuple[str, float]:
     path = resolve_read(source)
     if not path.is_file():
@@ -663,10 +805,21 @@ def run(task_text: str, hours: float, budget: float, turns: int, effort: str) ->
                 )
             if task.finished:
                 source = source_file(task_text)
-                problem = local_check(task.summary, source)
+                cite = citation(task_text)
+                problem = local_check(task.summary, source, cite)
                 if not problem and source:
                     try:
                         problem, check_cost = review(key, task.summary, source, model)
+                    except Exception as exc:
+                        problem, check_cost = (
+                            f"refused: checker error {type(exc).__name__}",
+                            0.0,
+                        )
+                    spend += check_cost
+                    log(f"check spend={spend:.4f}")
+                elif not problem and cite:
+                    try:
+                        problem, check_cost = review_page(key, task.summary, cite, model)
                     except Exception as exc:
                         problem, check_cost = (
                             f"refused: checker error {type(exc).__name__}",

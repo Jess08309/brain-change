@@ -4,7 +4,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "harness"))
 
-from router import Unavailable, choose, local_check, source_file, verdict
+from router import Unavailable, choose, citation, local_check, source_file, verdict
 
 
 class RouterTest(unittest.TestCase):
@@ -46,6 +46,12 @@ class RouterTest(unittest.TestCase):
         self.assertEqual(verdict("PASS"), "pass")
         self.assertEqual(verdict("FAIL the planet claim"), "fail")
         self.assertEqual(verdict("maybe"), "bad")
+
+    def test_citation_must_appear_in_the_answer(self):
+        url = "https://en.wikipedia.org/wiki/Call_option"
+        self.assertEqual(citation("Fetch " + url + " and finish."), url)
+        self.assertIn("citation", local_check("Condition: x", "", url))
+        self.assertEqual(local_check(url + "\nCondition: a right is not an obligation.", "", url), "")
 
 
 if __name__ == "__main__":

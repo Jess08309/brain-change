@@ -9,6 +9,7 @@ from __future__ import annotations
 import re
 
 ENABLED = "grok-4.7"
+URL_RE = re.compile(r"https://[^\s\"]+")
 PATH_RE = re.compile(r"(/home/(?:agent|botuser)/[A-Za-z0-9_./-]+)")
 REQUEST_RE = re.compile(
     r"(?i)\b(?:use|model|route to)\s+(claude|sonnet|fable|gpt[-\w.]*|grok[-\w.]*)\b"
@@ -39,14 +40,25 @@ def source_file(task: str) -> str:
     return ""
 
 
-def local_check(answer: str, source: str) -> str:
-    if not source:
+def citation(task: str) -> str:
+    match = URL_RE.search(task or "")
+    if not match:
         return ""
+    return match.group(0).rstrip(".,")
+
+
+def local_check(answer: str, source: str, cite: str = "") -> str:
     text = answer or ""
-    if source not in text:
-        return "refused: answer does not name the source"
-    if "Condition:" not in text:
-        return "refused: answer has no Condition:"
+    if source:
+        if source not in text:
+            return "refused: answer does not name the source"
+        if "Condition:" not in text:
+            return "refused: answer has no Condition:"
+    if cite:
+        if cite not in text:
+            return "refused: answer has no citation"
+        if "Condition:" not in text:
+            return "refused: answer has no Condition:"
     return ""
 
 
