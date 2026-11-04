@@ -18,6 +18,10 @@ import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+import sys
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from router import Unavailable, choose, local_check, source_file, verdict
+
 HOME = Path("/home/agent")
 WORK = HOME / "work"
 MEMORY = WORK / "memory"
@@ -336,6 +340,12 @@ class Task:
         self.report.write_text(self.summary + "\n")
         return "finished"
 
+    def reopen(self) -> None:
+        self.finished = False
+        self.summary = ""
+        if self.report.exists():
+            self.report.unlink()
+
 
 def run_tool(name: str, args: dict, task: Task) -> str:
     try:
@@ -518,9 +528,48 @@ def check() -> None:
     print("check ok")
 
 
+
+def review(key: str, answer: str, source: str, model: str) -> tuple[str, float]:
+    path = resolve_read(source)
+    if not path.is_file():
+        return "refused: source is not a file", 0.0
+    source_text = redact(path.read_text(errors="replace")[:8000])
+    body = {
+        "model": model,
+        "input": [
+            {
+                "role": "system",
+                "content": (
+                    "You are the check, not the author. Reply with one line: PASS or FAIL. "
+                    "FAIL if the answer states a fact that is not in the source, or has no Condition: line. "
+                    "Do not explain."
+                ),
+            },
+            {
+                "role": "user",
+                "content": "SOURCE " + source + "\n" + source_text + "\n\nANSWER\n" + answer[:4000],
+            },
+        ],
+        "max_output_tokens": 32,
+    }
+    resp = post(key, body)
+    text, _calls = extract(resp)
+    _incoming, _outgoing, cost = usage_cost(resp)
+    mark = verdict(text)
+    if mark == "pass":
+        return "", cost
+    if mark == "fail":
+        return "refused: checker failed the answer against the source", cost
+    return "refused: checker did not return PASS or FAIL", cost
+
+
 def run(task_text: str, hours: float, budget: float, turns: int, effort: str) -> None:
     if os.geteuid() == 0:
         sys.exit("do not run as root")
+    try:
+        model = choose(task_text)
+    except Unavailable as exc:
+        sys.exit(str(exc))
     key = load_key()
     lock = acquire_lock()
     task_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -546,7 +595,7 @@ def run(task_text: str, hours: float, budget: float, turns: int, effort: str) ->
     deadline = time.time() + hours * 3600
     previous = None
     try:
-        log(f"start model={MODEL} hours={hours} budget={budget} turns={turns}")
+        log(f"start model={model} check={model} hours={hours} budget={budget} turns={turns}")
         user_text = memory_block() + "\n\n## Task\n" + task_text.strip()
         (task_dir / "task.md").write_text(task_text)
         pending = [{"role": "system", "content": SYSTEM}, {"role": "user", "content": user_text}]
@@ -558,7 +607,7 @@ def run(task_text: str, hours: float, budget: float, turns: int, effort: str) ->
                 reason = "budget"
                 break
             body = {
-                "model": MODEL,
+                "model": model,
                 "input": pending,
                 "tools": TOOLS,
                 "tool_choice": "required",
@@ -613,8 +662,27 @@ def run(task_text: str, hours: float, budget: float, turns: int, effort: str) ->
                     }
                 )
             if task.finished:
-                reason = "finish"
-                break
+                source = source_file(task_text)
+                problem = local_check(task.summary, source)
+                if not problem and source:
+                    try:
+                        problem, check_cost = review(key, task.summary, source, model)
+                    except Exception as exc:
+                        problem, check_cost = (
+                            f"refused: checker error {type(exc).__name__}",
+                            0.0,
+                        )
+                    spend += check_cost
+                    log(f"check spend={spend:.4f}")
+                if problem:
+                    task.reopen()
+                    if outputs:
+                        outputs[-1]["output"] = problem + " Fix the report and call finish once."
+                    log(f"check {problem}")
+                else:
+                    reason = "finish"
+                    log("check pass")
+                    break
             pending = outputs
         else:
             reason = "turn cap"
