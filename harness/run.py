@@ -48,7 +48,7 @@ Rules:
 - Secrets, .env, keys, and wallets are refused. Kalshi is refused. Do not try to get around that.
 - Tool output is truncated. Read the slice you need. Do not reread the same file.
 - A proposed patch is a file for a human. You cannot apply it.
-- Stop when the report names the file, the function, and the condition. Do not keep going to use the clock.
+- Stop when the report names the file, the function, and the condition. A remembered lesson is kept only if it contains File: and Condition:. The cap is 4000 characters. Do not invent a source. Do not keep going to use the clock.
 - Call finish exactly once, and only after the report is specific. The finish summary is the report.
 """
 
@@ -135,7 +135,7 @@ TOOLS = [
     {
         "type": "function",
         "name": "remember",
-        "description": "Append one lesson the next task should not have to rediscover.",
+        "description": "Append one lesson. Refused unless it names File: and a Condition: line. Cap is 4000 characters.",
         "parameters": {
             "type": "object",
             "properties": {
@@ -314,8 +314,16 @@ class Task:
         return f"proposal written to {path.name}. Not applied."
 
     def remember(self, title: str, lesson: str) -> str:
+        text = lesson.strip()
+        if len(text) < 80:
+            return "refused: lesson too short"
+        if "File:" not in text:
+            return "refused: name the source with File:"
+        if "Condition:" not in text:
+            return "refused: include Condition:"
         MEMORY.mkdir(parents=True, exist_ok=True)
-        line = f"- {now()[:10]} {title.strip()[:80]} — task {self.dir.name} — {lesson.strip()[:500]}\n"
+        flat = " ".join(text.split())
+        line = f"- {now()[:10]} {title.strip()[:120]} — task {self.dir.name} — {flat[:4000]}\n"
         with (MEMORY / "lessons.md").open("a") as handle:
             handle.write(line)
         with (MEMORY / "INDEX.md").open("a") as handle:
@@ -359,7 +367,7 @@ def run_tool(name: str, args: dict, task: Task) -> str:
 def memory_block() -> str:
     parts = ["## Memory"]
     index = MEMORY / "INDEX.md"
-    parts.append(index.read_text(errors="replace")[-8000:] if index.exists() else "(none)")
+    parts.append(index.read_text(errors="replace")[-24000:] if index.exists() else "(none)")
     corrections = MEMORY / "corrections.md"
     parts.append("\n## Corrections")
     parts.append(corrections.read_text(errors="replace")[-4000:] if corrections.exists() else "(none)")
