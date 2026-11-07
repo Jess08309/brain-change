@@ -1,4 +1,4 @@
-# Changing a Brain on Purpose
+# The Attention Gate
 
 A working framework for a healthy adult, 40+, who wants to beat an addiction, get control of ADHD, and deliberately change parts of their own personality — plus a section on neuroplasticity and intelligence, and a worked case following one person through two psilocybin experiences and the weeks after.
 
