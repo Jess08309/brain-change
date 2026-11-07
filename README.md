@@ -1,5 +1,7 @@
 # The Attention Gate
 
+The brain keeps what attention marks as important. ADHD is attention that will not stay on the thing you chose. Addiction is attention locked on one reward. Personality change is attention held on a new pattern until that pattern becomes the default.
+
 A working framework for a healthy adult, 40+, who wants to beat an addiction, get control of ADHD, and deliberately change parts of their own personality — plus a section on neuroplasticity and intelligence, and a worked case following one person through two psilocybin experiences and the weeks after.
 
 This is not medical advice. It is a map of what the research supports, written so the ideas stay clear when the chat is gone.
@@ -20,7 +22,7 @@ Two consequences:
 - The opener is not the main event. Exercise, sleep, or a psychedelic can open the window. What you do while it is open decides the outcome.
 - Focus is not a limit on brain change. It *is* the mechanism. A brain pointed everywhere changes nowhere.
 
-This is why the three goals are connected. ADHD is a disorder of the attention gate. Addiction is a learning loop that has locked the gate onto one reward. Personality change is slow learning that needs the gate working for years. Fix the gate, and the other two become possible.
+Those are not three separate projects. They are three states of the same attention. Treat the one that will not stay first. Until it holds, quitting and a personality change have nothing steady to aim with.
 
 ---
 
