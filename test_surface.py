@@ -33,15 +33,17 @@ class LaptopSurfaceTest(unittest.TestCase):
             self.assertEqual(len(filed), 1)
             self.assertIn("Check the local index.", filed[0].read_text(encoding="utf-8"))
 
-    def test_a_present_key_is_not_read_and_not_called(self):
+    def test_a_present_key_is_not_printed(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             secret = root / ".secrets"
             secret.mkdir()
             key = secret / "xai_api_key"
             key.write_text("not-a-real-key\n", encoding="utf-8")
+            (root / "harness").mkdir()
+            (root / "harness" / "run.py").write_text("raise SystemExit(1)\n", encoding="utf-8")
             out = handle("Say the next step only.", root)
-            self.assertIn("not wired", out)
+            self.assertIn("stopped", out)
             self.assertNotIn("not-a-real-key", out)
             self.assertEqual(key.read_text(encoding="utf-8"), "not-a-real-key\n")
 

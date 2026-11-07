@@ -22,16 +22,17 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from router import Unavailable, choose, citation, local_check, source_file, verdict
 
-HOME = Path("/home/agent")
+HOME = Path(os.environ.get("FRED_HOME") or "/home/agent")
 WORK = HOME / "work"
 MEMORY = WORK / "memory"
 SKILLS = WORK / "skills"
 KEY_FILE = HOME / ".secrets" / "xai_api_key"
+SUITE = Path("/home/botuser/AI-Trading-Bot-Suite")
 API_URL = "https://api.x.ai/v1/responses"
 MODEL = "grok-4.7"
 IN_PRICE = 2.0 / 1_000_000
 OUT_PRICE = 6.0 / 1_000_000
-READ_ROOTS = [Path("/home/botuser/AI-Trading-Bot-Suite"), WORK]
+READ_ROOTS = [SUITE, WORK] if SUITE.exists() else [WORK]
 JOURNAL_UNITS = {"cryptobot.service"}
 SKIP_DIRS = {".git", "__pycache__", "venv", ".venv", "node_modules", ".secrets"}
 SECRET_RE = re.compile(
@@ -281,6 +282,19 @@ def safe_name(name: str) -> str:
     return (cleaned or "note")[:80]
 
 
+def running_as_root() -> bool:
+    geteuid = getattr(os, "geteuid", None)
+    return bool(geteuid and geteuid() == 0)
+
+
+def under_home(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(HOME.resolve())
+    except ValueError:
+        return False
+    return True
+
+
 def is_secret(path: Path) -> bool:
     text = str(path)
     if SECRET_RE.search(text):
@@ -293,7 +307,8 @@ def is_secret(path: Path) -> bool:
 def resolve_read(raw: str) -> Path:
     path = Path(raw).expanduser()
     if not path.is_absolute():
-        path = Path("/home/botuser/AI-Trading-Bot-Suite") / path
+        base = SUITE if SUITE.exists() else WORK
+        path = base / path
     path = path.resolve()
     if is_secret(path):
         raise PermissionError("refusing secret or Kalshi path")
@@ -505,7 +520,7 @@ def memory_block() -> str:
 def load_key() -> str:
     key = KEY_FILE.read_text().strip() if KEY_FILE.exists() else os.environ.get("XAI_API_KEY", "").strip()
     if len(key) < 20:
-        sys.exit("missing or short key at /home/agent/.secrets/xai_api_key")
+        sys.exit(f"missing or short key at {KEY_FILE}")
     return key
 
 
@@ -619,7 +634,7 @@ def preamble_status() -> None:
 
 
 def check() -> None:
-    if os.geteuid() == 0:
+    if running_as_root():
         sys.exit("do not run as root")
     if not KEY_FILE.exists():
         sys.exit("key file missing")
@@ -706,7 +721,7 @@ def review(key: str, answer: str, source: str, model: str) -> tuple[str, float]:
 
 
 def run(task_text: str, hours: float, budget: float, turns: int, effort: str) -> None:
-    if os.geteuid() == 0:
+    if running_as_root():
         sys.exit("do not run as root")
     try:
         model = choose(task_text)
@@ -881,8 +896,8 @@ def main() -> None:
     if not args.task_file:
         sys.exit("need --task-file, --smoke, --check, or --status")
     path = Path(args.task_file).resolve()
-    if not str(path).startswith("/home/agent/"):
-        sys.exit("task file must live under /home/agent")
+    if not under_home(path):
+        sys.exit("task file must live under the home")
     if is_secret(path):
         sys.exit("refusing that task file")
     run(path.read_text(errors="replace")[:20000], args.hours, args.budget, args.turns, args.effort)
